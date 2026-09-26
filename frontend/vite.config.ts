@@ -13,7 +13,11 @@ export default defineConfig({
 		rollupOptions: {
 			input: "src/main.tsx",
 			output: {
-				entryFileNames: "diagram_studio.bundle.js",
+				// NOT named *.bundle.js on purpose: Frappe's own esbuild pipeline
+				// auto-discovers any public/js/*.bundle.js as a source entry it must
+				// compile itself, and chokes on an already-built IIFE. This name keeps
+				// it a plain static asset that bench just symlinks into sites/assets.
+				entryFileNames: "diagram_studio.js",
 				format: "iife",
 				assetFileNames: "diagram_studio.[ext]",
 			},
