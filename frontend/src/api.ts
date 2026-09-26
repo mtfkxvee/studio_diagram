@@ -34,13 +34,6 @@ export type CanvasJson = {
 	edges: DiagramEdge[];
 };
 
-export type DiagramSummary = {
-	name: string;
-	title: string;
-	diagram_type: string;
-	modified: string;
-};
-
 let csrfToken = "";
 
 export function configure(token: string) {
@@ -64,15 +57,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	return res.json();
 }
 
-export async function listDiagrams(): Promise<DiagramSummary[]> {
-	const data = await request<{ data: DiagramSummary[] }>(
-		"/api/resource/Diagram?fields=" +
-			encodeURIComponent(JSON.stringify(["name", "title", "diagram_type", "modified"])) +
-			"&order_by=modified desc&limit_page_length=0"
-	);
-	return data.data;
-}
-
 export async function getDiagram(name: string): Promise<{ title: string; diagram_type: string; canvas_json: CanvasJson }> {
 	const data = await request<{ data: any }>(`/api/resource/Diagram/${encodeURIComponent(name)}`);
 	let canvas_json: CanvasJson = { nodes: [], edges: [] };
@@ -89,10 +73,6 @@ export async function saveCanvas(name: string, canvas: CanvasJson): Promise<void
 		method: "PUT",
 		body: JSON.stringify({ canvas_json: JSON.stringify(canvas) }),
 	});
-}
-
-export async function deleteDiagram(name: string): Promise<void> {
-	await request(`/api/resource/Diagram/${encodeURIComponent(name)}`, { method: "DELETE" });
 }
 
 // Live data for a node bound to a real record — this is what makes a node

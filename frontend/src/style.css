@@ -4,42 +4,6 @@
 	border: 1px solid var(--border-color, #d1d8dd);
 }
 
-.ds-sidebar {
-	width: 220px;
-	border-right: 1px solid var(--border-color, #d1d8dd);
-	padding: 10px;
-	overflow-y: auto;
-	flex-shrink: 0;
-}
-
-.ds-sidebar ul {
-	list-style: none;
-	margin: 10px 0 0;
-	padding: 0;
-}
-
-.ds-sidebar li {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 6px 8px;
-	border-radius: 4px;
-	cursor: pointer;
-}
-
-.ds-sidebar li:hover,
-.ds-sidebar li.active {
-	background: var(--bg-light-gray, #f4f5f6);
-}
-
-.ds-sidebar__delete {
-	visibility: hidden;
-}
-
-.ds-sidebar li:hover .ds-sidebar__delete {
-	visibility: visible;
-}
-
 .ds-canvas {
 	flex: 1;
 	position: relative;
@@ -122,10 +86,17 @@
 
 .ds-empty {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
+	gap: 12px;
 	height: 100%;
 	color: var(--text-muted, #8d99a6);
+}
+
+.ds-empty__actions {
+	display: flex;
+	gap: 8px;
 }
 
 .ds-node {

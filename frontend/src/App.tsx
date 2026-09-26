@@ -19,13 +19,7 @@ import LinkPicker from "./LinkPicker";
 import ShapePalette from "./ShapePalette";
 import QuickCreateMenu, { type QuickPreset } from "./QuickCreateMenu";
 import type { ShapePreset } from "./shapes";
-import {
-	deleteDiagram,
-	getDiagram,
-	listDiagrams,
-	saveCanvas,
-	type DiagramSummary,
-} from "./api";
+import { getDiagram, saveCanvas } from "./api";
 
 const nodeTypes = { shape: ShapeNode, linked: LinkedNode };
 
@@ -40,7 +34,6 @@ type EditorProps = {
 };
 
 function Editor({ initialOpen, onReady }: EditorProps) {
-	const [diagrams, setDiagrams] = useState<DiagramSummary[]>([]);
 	const [current, setCurrent] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
 	const [showPicker, setShowPicker] = useState(false);
@@ -49,14 +42,6 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const { screenToFlowPosition } = useReactFlow();
-
-	const refreshList = useCallback(() => {
-		listDiagrams().then(setDiagrams).catch(console.error);
-	}, []);
-
-	useEffect(() => {
-		refreshList();
-	}, [refreshList]);
 
 	function handleLabelChange(id: string, label: string) {
 		setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, label } } : n)));
@@ -185,15 +170,8 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 		(window as any).frappe?.new_doc("Diagram");
 	}
 
-	async function handleDelete(name: string) {
-		if (!confirm(`Hapus diagram "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
-		await deleteDiagram(name);
-		if (current === name) {
-			setCurrent(null);
-			setNodes([]);
-			setEdges([]);
-		}
-		refreshList();
+	function goToDiagramList() {
+		(window as any).frappe?.set_route("List", "Diagram");
 	}
 
 	function addShapeNodeAt(preset: ShapePreset, position: { x: number; y: number }) {
@@ -299,24 +277,10 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 		}));
 		await saveCanvas(current, { nodes: cleanNodes as any, edges: cleanEdges as any });
 		setDirty(false);
-		refreshList();
 	}
 
 	return (
 		<div className="ds-layout">
-			<aside className="ds-sidebar">
-				<button onClick={goToNewDiagramForm}>+ Diagram baru</button>
-				<ul>
-					{diagrams.map((d) => (
-						<li key={d.name} className={d.name === current ? "active" : ""}>
-							<span onClick={() => openDiagram(d.name)}>{d.title}</span>
-							<button className="ds-sidebar__delete" onClick={() => handleDelete(d.name)}>
-								x
-							</button>
-						</li>
-					))}
-				</ul>
-			</aside>
 			{current && <ShapePalette />}
 			<main className="ds-canvas">
 				{current ? (
@@ -360,7 +324,13 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 						)}
 					</>
 				) : (
-					<div className="ds-empty">Pilih atau buat diagram di sebelah kiri.</div>
+					<div className="ds-empty">
+						<p>Belum ada diagram yang dibuka.</p>
+						<div className="ds-empty__actions">
+							<button onClick={goToNewDiagramForm}>+ Diagram baru</button>
+							<button onClick={goToDiagramList}>Lihat semua diagram</button>
+						</div>
+					</div>
 				)}
 			</main>
 		</div>
