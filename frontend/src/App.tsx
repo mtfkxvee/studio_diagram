@@ -20,7 +20,6 @@ import ShapePalette from "./ShapePalette";
 import QuickCreateMenu, { type QuickPreset } from "./QuickCreateMenu";
 import type { ShapePreset } from "./shapes";
 import {
-	createDiagram,
 	deleteDiagram,
 	getDiagram,
 	listDiagrams,
@@ -35,7 +34,12 @@ function nextNodeId() {
 	return `node-${Date.now()}-${nodeIdCounter++}`;
 }
 
-function Editor() {
+type EditorProps = {
+	initialOpen?: string | null;
+	onReady?: (open: (name: string) => void) => void;
+};
+
+function Editor({ initialOpen, onReady }: EditorProps) {
 	const [diagrams, setDiagrams] = useState<DiagramSummary[]>([]);
 	const [current, setCurrent] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
@@ -166,18 +170,19 @@ function Editor() {
 		setDirty(false);
 	}
 
-	async function newDiagram() {
-		const title = prompt("Nama diagram baru:");
-		if (!title) return;
-		// "Other" here just means "no fixed convention" — nothing about a
-		// diagram requires linking to an ERPNext record. Pure brainstorming
-		// diagrams (shape nodes only, no ERP link) work the same way.
-		const name = await createDiagram(title, "Flowchart");
-		refreshList();
-		setNodes([]);
-		setEdges([]);
-		setCurrent(name);
-		setDirty(false);
+	useEffect(() => {
+		onReady?.(openDiagram);
+		if (initialOpen) openDiagram(initialOpen);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	function goToNewDiagramForm() {
+		// A JS prompt() for the title felt cramped, and there was nowhere to
+		// pick Diagram Type / write a description. The standard "New Diagram"
+		// desk form has room for all of that — creating a diagram is now just
+		// creating any other ERPNext document. The form's own "Buka di
+		// Diagram Studio" button (diagram.js) is the way back into the canvas.
+		(window as any).frappe?.new_doc("Diagram");
 	}
 
 	async function handleDelete(name: string) {
@@ -300,7 +305,7 @@ function Editor() {
 	return (
 		<div className="ds-layout">
 			<aside className="ds-sidebar">
-				<button onClick={newDiagram}>+ Diagram baru</button>
+				<button onClick={goToNewDiagramForm}>+ Diagram baru</button>
 				<ul>
 					{diagrams.map((d) => (
 						<li key={d.name} className={d.name === current ? "active" : ""}>
@@ -362,10 +367,10 @@ function Editor() {
 	);
 }
 
-export default function App() {
+export default function App(props: EditorProps) {
 	return (
 		<ReactFlowProvider>
-			<Editor />
+			<Editor {...props} />
 		</ReactFlowProvider>
 	);
 }

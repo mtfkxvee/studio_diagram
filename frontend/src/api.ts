@@ -84,18 +84,6 @@ export async function getDiagram(name: string): Promise<{ title: string; diagram
 	return { title: data.data.title, diagram_type: data.data.diagram_type, canvas_json };
 }
 
-export async function createDiagram(title: string, diagram_type: string): Promise<string> {
-	const data = await request<{ data: { name: string } }>("/api/resource/Diagram", {
-		method: "POST",
-		body: JSON.stringify({
-			title,
-			diagram_type,
-			canvas_json: JSON.stringify({ nodes: [], edges: [] } as CanvasJson),
-		}),
-	});
-	return data.data.name;
-}
-
 export async function saveCanvas(name: string, canvas: CanvasJson): Promise<void> {
 	await request(`/api/resource/Diagram/${encodeURIComponent(name)}`, {
 		method: "PUT",
