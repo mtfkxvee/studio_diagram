@@ -2,6 +2,8 @@ import { Handle, NodeResizer, NodeToolbar, Position, type NodeProps } from "reac
 import { useState } from "react";
 import type { ShapeKind } from "../shapes";
 
+export type Direction = "top" | "right" | "bottom" | "left";
+
 export type ShapeNodeData = {
 	label: string;
 	shape: ShapeKind;
@@ -9,15 +11,24 @@ export type ShapeNodeData = {
 	onLabelChange: (id: string, label: string) => void;
 	onStyleChange: (id: string, patch: Partial<Pick<ShapeNodeData, "shape" | "color">>) => void;
 	onDelete: (id: string) => void;
+	onQuickCreate: (id: string, direction: Direction, clientX: number, clientY: number) => void;
 };
 
 const COLORS = ["#ffffff", "#fef08a", "#bbf7d0", "#bfdbfe", "#fecaca", "#e9d5ff"];
+
+const ARROWS: { dir: Direction; icon: string; position: Position }[] = [
+	{ dir: "top", icon: "▲", position: Position.Top },
+	{ dir: "right", icon: "▶", position: Position.Right },
+	{ dir: "bottom", icon: "▼", position: Position.Bottom },
+	{ dir: "left", icon: "◀", position: Position.Left },
+];
 
 // Freeform node for brainstorming — no ERPNext record attached, just a
 // shape + color + text. Contrast with LinkedNode, which is bound to a
 // real record and pulls live data.
 export default function ShapeNode({ id, data, selected }: NodeProps<ShapeNodeData>) {
 	const [editing, setEditing] = useState(false);
+	const [hovered, setHovered] = useState(false);
 	const [value, setValue] = useState(data.label);
 
 	function commit() {
@@ -38,7 +49,11 @@ export default function ShapeNode({ id, data, selected }: NodeProps<ShapeNodeDat
 	);
 
 	return (
-		<>
+		<div
+			className="ds-shape-wrapper"
+			onMouseEnter={() => setHovered(true)}
+			onMouseLeave={() => setHovered(false)}
+		>
 			<NodeResizer isVisible={selected} minWidth={40} minHeight={30} />
 			<NodeToolbar isVisible={selected} position={Position.Top}>
 				{COLORS.map((c) => (
@@ -54,15 +69,35 @@ export default function ShapeNode({ id, data, selected }: NodeProps<ShapeNodeDat
 				</button>
 			</NodeToolbar>
 
+			{hovered &&
+				!editing &&
+				ARROWS.map((a) => (
+					<button
+						key={a.dir}
+						className={`ds-quick-arrow ds-quick-arrow--${a.dir} nodrag nopan`}
+						title={`Tambah shape ke arah ${a.dir}`}
+						onClick={(e) => {
+							e.stopPropagation();
+							data.onQuickCreate(id, a.dir, e.clientX, e.clientY);
+						}}
+					>
+						{a.icon}
+					</button>
+				))}
+
 			<div
 				className={`ds-shape ds-shape--${data.shape}`}
 				style={{ background: data.shape === "text" ? "transparent" : data.color, width: "100%", height: "100%" }}
 				onDoubleClick={() => setEditing(true)}
 			>
-				<Handle type="target" position={Position.Top} />
-				<Handle type="source" position={Position.Bottom} />
-				<Handle type="target" position={Position.Left} id="l" />
-				<Handle type="source" position={Position.Right} id="r" />
+				<Handle type="target" position={Position.Top} id="top-target" />
+				<Handle type="source" position={Position.Top} id="top-source" />
+				<Handle type="source" position={Position.Bottom} id="bottom-source" />
+				<Handle type="target" position={Position.Bottom} id="bottom-target" />
+				<Handle type="target" position={Position.Left} id="left-target" />
+				<Handle type="source" position={Position.Left} id="left-source" />
+				<Handle type="source" position={Position.Right} id="right-source" />
+				<Handle type="target" position={Position.Right} id="right-target" />
 
 				{data.shape === "actor" ? (
 					<div className="ds-shape__content ds-shape__content--actor">
@@ -85,6 +120,6 @@ export default function ShapeNode({ id, data, selected }: NodeProps<ShapeNodeDat
 					<div className="ds-shape__content">{label}</div>
 				)}
 			</div>
-		</>
+		</div>
 	);
 }

@@ -13,10 +13,11 @@ import ReactFlow, {
 	type EdgeMouseHandler,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import ShapeNode from "./nodes/ShapeNode";
+import ShapeNode, { type Direction } from "./nodes/ShapeNode";
 import LinkedNode from "./nodes/LinkedNode";
 import LinkPicker from "./LinkPicker";
 import ShapePalette from "./ShapePalette";
+import QuickCreateMenu, { type QuickPreset } from "./QuickCreateMenu";
 import type { ShapePreset } from "./shapes";
 import {
 	createDiagram,
@@ -39,6 +40,7 @@ function Editor() {
 	const [current, setCurrent] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
 	const [showPicker, setShowPicker] = useState(false);
+	const [quickCreate, setQuickCreate] = useState<{ sourceId: string; direction: Direction; x: number; y: number } | null>(null);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,72 @@ function Editor() {
 		setDirty(true);
 	}
 
+	function handleQuickCreate(sourceId: string, direction: Direction, clientX: number, clientY: number) {
+		setQuickCreate({ sourceId, direction, x: clientX, y: clientY });
+	}
+
+	const OPPOSITE: Record<Direction, Direction> = { top: "bottom", bottom: "top", left: "right", right: "left" };
+	const QUICK_GAP = 60;
+
+	function handleQuickPick(preset: QuickPreset) {
+		if (!quickCreate) return;
+		const { sourceId, direction } = quickCreate;
+		const source = nodes.find((n) => n.id === sourceId);
+		setQuickCreate(null);
+		if (!source) return;
+
+		const sw = source.width ?? 120;
+		const sh = source.height ?? 60;
+		let x = source.position.x;
+		let y = source.position.y;
+		if (direction === "right") {
+			x = source.position.x + sw + QUICK_GAP;
+			y = source.position.y + sh / 2 - preset.height / 2;
+		} else if (direction === "left") {
+			x = source.position.x - preset.width - QUICK_GAP;
+			y = source.position.y + sh / 2 - preset.height / 2;
+		} else if (direction === "bottom") {
+			y = source.position.y + sh + QUICK_GAP;
+			x = source.position.x + sw / 2 - preset.width / 2;
+		} else {
+			y = source.position.y - preset.height - QUICK_GAP;
+			x = source.position.x + sw / 2 - preset.width / 2;
+		}
+
+		const newId = nextNodeId();
+		setNodes((nds) => [
+			...nds,
+			{
+				id: newId,
+				type: "shape",
+				position: { x, y },
+				width: preset.width,
+				height: preset.height,
+				data: {
+					label: preset.label,
+					shape: preset.kind,
+					color: preset.color,
+					onLabelChange: handleLabelChange,
+					onStyleChange: handleStyleChange,
+					onDelete: handleDeleteNode,
+					onQuickCreate: handleQuickCreate,
+				},
+			},
+		]);
+		setEdges((eds) => [
+			...eds,
+			{
+				id: `edge-${sourceId}-${newId}`,
+				source: sourceId,
+				sourceHandle: `${direction}-source`,
+				target: newId,
+				targetHandle: `${OPPOSITE[direction]}-target`,
+				label: "",
+			},
+		]);
+		setDirty(true);
+	}
+
 	function decorate(n: any) {
 		// Diagrams saved before ShapeNode existed used type "text" with no
 		// shape/color — treat those as plain rectangles so old diagrams still
@@ -83,6 +151,7 @@ function Editor() {
 					onLabelChange: handleLabelChange,
 					onStyleChange: handleStyleChange,
 					onDelete: handleDeleteNode,
+					onQuickCreate: handleQuickCreate,
 				},
 			};
 		}
@@ -139,6 +208,7 @@ function Editor() {
 					onLabelChange: handleLabelChange,
 					onStyleChange: handleStyleChange,
 					onDelete: handleDeleteNode,
+					onQuickCreate: handleQuickCreate,
 				},
 			},
 		]);
@@ -214,7 +284,14 @@ function Editor() {
 				reference_name: data.reference_name,
 			},
 		}));
-		const cleanEdges = edges.map(({ id, source, target, label }) => ({ id, source, target, label }));
+		const cleanEdges = edges.map(({ id, source, target, sourceHandle, targetHandle, label }) => ({
+			id,
+			source,
+			target,
+			sourceHandle,
+			targetHandle,
+			label,
+		}));
 		await saveCanvas(current, { nodes: cleanNodes as any, edges: cleanEdges as any });
 		setDirty(false);
 		refreshList();
@@ -267,6 +344,14 @@ function Editor() {
 						</div>
 						{showPicker && (
 							<LinkPicker onPick={addLinkedNode} onClose={() => setShowPicker(false)} />
+						)}
+						{quickCreate && (
+							<QuickCreateMenu
+								x={quickCreate.x}
+								y={quickCreate.y}
+								onPick={handleQuickPick}
+								onClose={() => setQuickCreate(null)}
+							/>
 						)}
 					</>
 				) : (
