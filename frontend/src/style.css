@@ -138,10 +138,22 @@
 	text-align: center;
 }
 
+/* Deliberately bigger than the node itself (inset: -32px) so the hoverable
+   area extends all the way out to where the quick-create arrows sit. If this
+   box matched the shape exactly, moving the mouse from the shape towards an
+   arrow would cross a dead zone outside this element, firing onMouseLeave
+   before the cursor ever reached the button. ds-shape-inner below pulls the
+   actual visible shape back to the node's real bounds. */
 .ds-shape-wrapper {
-	position: relative;
-	width: 100%;
-	height: 100%;
+	position: absolute;
+	inset: -32px;
+}
+
+.ds-shape-inner {
+	position: absolute;
+	inset: 32px;
+	width: auto;
+	height: auto;
 }
 
 .ds-quick-arrow {
@@ -168,25 +180,25 @@
 }
 
 .ds-quick-arrow--top {
-	top: -28px;
+	top: 4px;
 	left: 50%;
 	transform: translateX(-50%);
 }
 
 .ds-quick-arrow--bottom {
-	bottom: -28px;
+	bottom: 4px;
 	left: 50%;
 	transform: translateX(-50%);
 }
 
 .ds-quick-arrow--left {
-	left: -28px;
+	left: 4px;
 	top: 50%;
 	transform: translateY(-50%);
 }
 
 .ds-quick-arrow--right {
-	right: -28px;
+	right: 4px;
 	top: 50%;
 	transform: translateY(-50%);
 }
