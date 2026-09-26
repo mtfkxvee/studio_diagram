@@ -1,19 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
 	Background,
 	Controls,
 	MiniMap,
+	ReactFlowProvider,
 	addEdge,
 	useEdgesState,
 	useNodesState,
+	useReactFlow,
 	type Connection,
 	type Edge,
 	type EdgeMouseHandler,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import ShapeNode, { type ShapeKind } from "./nodes/ShapeNode";
+import ShapeNode from "./nodes/ShapeNode";
 import LinkedNode from "./nodes/LinkedNode";
 import LinkPicker from "./LinkPicker";
+import ShapePalette from "./ShapePalette";
+import type { ShapePreset } from "./shapes";
 import {
 	createDiagram,
 	deleteDiagram,
@@ -25,25 +29,20 @@ import {
 
 const nodeTypes = { shape: ShapeNode, linked: LinkedNode };
 
-const SHAPE_PRESETS: { kind: ShapeKind; icon: string; title: string; color: string }[] = [
-	{ kind: "rectangle", icon: "▭", title: "Proses", color: "#ffffff" },
-	{ kind: "diamond", icon: "◇", title: "Keputusan", color: "#ffffff" },
-	{ kind: "ellipse", icon: "○", title: "Mulai/Selesai", color: "#ffffff" },
-	{ kind: "note", icon: "🗒", title: "Sticky note", color: "#fef08a" },
-];
-
 let nodeIdCounter = 1;
 function nextNodeId() {
 	return `node-${Date.now()}-${nodeIdCounter++}`;
 }
 
-export default function App() {
+function Editor() {
 	const [diagrams, setDiagrams] = useState<DiagramSummary[]>([]);
 	const [current, setCurrent] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
 	const [showPicker, setShowPicker] = useState(false);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+	const wrapperRef = useRef<HTMLDivElement>(null);
+	const { screenToFlowPosition } = useReactFlow();
 
 	const refreshList = useCallback(() => {
 		listDiagrams().then(setDiagrams).catch(console.error);
@@ -58,7 +57,7 @@ export default function App() {
 		setDirty(true);
 	}
 
-	function handleStyleChange(id: string, patch: Partial<{ shape: ShapeKind; color: string }>) {
+	function handleStyleChange(id: string, patch: Partial<{ shape: string; color: string }>) {
 		setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
 		setDirty(true);
 	}
@@ -123,16 +122,18 @@ export default function App() {
 		refreshList();
 	}
 
-	function addShapeNode(preset: (typeof SHAPE_PRESETS)[number]) {
+	function addShapeNodeAt(preset: ShapePreset, position: { x: number; y: number }) {
 		const id = nextNodeId();
 		setNodes((nds) => [
 			...nds,
 			{
 				id,
 				type: "shape",
-				position: { x: 100 + nds.length * 30, y: 100 + nds.length * 20 },
+				position,
+				width: preset.width,
+				height: preset.height,
 				data: {
-					label: preset.title,
+					label: preset.label,
 					shape: preset.kind,
 					color: preset.color,
 					onLabelChange: handleLabelChange,
@@ -143,6 +144,26 @@ export default function App() {
 		]);
 		setDirty(true);
 	}
+
+	const onDragOver = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "move";
+	}, []);
+
+	const onDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+			const raw = e.dataTransfer.getData("application/x-diagram-studio-shape");
+			if (!raw) return;
+			const preset: ShapePreset = JSON.parse(raw);
+			const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+			addShapeNodeAt(preset, {
+				x: position.x - preset.width / 2,
+				y: position.y - preset.height / 2,
+			});
+		},
+		[screenToFlowPosition]
+	);
 
 	function addLinkedNode(doctype: string, name: string, label: string) {
 		const id = nextNodeId();
@@ -214,38 +235,36 @@ export default function App() {
 					))}
 				</ul>
 			</aside>
+			{current && <ShapePalette />}
 			<main className="ds-canvas">
 				{current ? (
 					<>
 						<div className="ds-toolbar">
-							{SHAPE_PRESETS.map((preset) => (
-								<button key={preset.kind} title={preset.title} onClick={() => addShapeNode(preset)}>
-									{preset.icon} {preset.title}
-								</button>
-							))}
 							<button onClick={() => setShowPicker(true)}>+ Node terhubung ke ERP</button>
 							<button onClick={handleSave} disabled={!dirty}>
 								{dirty ? "Simpan perubahan" : "Tersimpan"}
 							</button>
 						</div>
-						<ReactFlow
-							nodes={nodes}
-							edges={edges}
-							onNodesChange={onNodesChange}
-							onEdgesChange={(changes) => {
-								onEdgesChange(changes);
-								setDirty(true);
-							}}
-							onConnect={onConnect}
-							onEdgeDoubleClick={onEdgeDoubleClick}
-							nodeTypes={nodeTypes}
-							deleteKeyCode={["Backspace", "Delete"]}
-							fitView
-						>
-							<Background />
-							<Controls />
-							<MiniMap />
-						</ReactFlow>
+						<div className="ds-flow-wrapper" ref={wrapperRef} onDragOver={onDragOver} onDrop={onDrop}>
+							<ReactFlow
+								nodes={nodes}
+								edges={edges}
+								onNodesChange={onNodesChange}
+								onEdgesChange={(changes) => {
+									onEdgesChange(changes);
+									setDirty(true);
+								}}
+								onConnect={onConnect}
+								onEdgeDoubleClick={onEdgeDoubleClick}
+								nodeTypes={nodeTypes}
+								deleteKeyCode={["Backspace", "Delete"]}
+								fitView
+							>
+								<Background />
+								<Controls />
+								<MiniMap />
+							</ReactFlow>
+						</div>
 						{showPicker && (
 							<LinkPicker onPick={addLinkedNode} onClose={() => setShowPicker(false)} />
 						)}
@@ -255,5 +274,13 @@ export default function App() {
 				)}
 			</main>
 		</div>
+	);
+}
+
+export default function App() {
+	return (
+		<ReactFlowProvider>
+			<Editor />
+		</ReactFlowProvider>
 	);
 }

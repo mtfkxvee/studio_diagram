@@ -45,6 +45,72 @@
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
+}
+
+.ds-flow-wrapper {
+	flex: 1;
+	min-height: 0;
+}
+
+.ds-palette {
+	width: 210px;
+	flex-shrink: 0;
+	border-right: 1px solid var(--border-color, #d1d8dd);
+	overflow-y: auto;
+	padding: 8px;
+}
+
+.ds-palette__search {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 4px 6px;
+	margin-bottom: 8px;
+	border: 1px solid #d1d8dd;
+	border-radius: 4px;
+}
+
+.ds-palette__category-title {
+	width: 100%;
+	text-align: left;
+	background: none;
+	border: none;
+	font-weight: 600;
+	font-size: 12px;
+	text-transform: uppercase;
+	color: #4b5563;
+	padding: 6px 2px;
+	cursor: pointer;
+}
+
+.ds-palette__grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.ds-palette__item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	cursor: grab;
+	padding: 4px;
+	border-radius: 4px;
+	font-size: 10px;
+	text-align: center;
+	color: #4b5563;
+}
+
+.ds-palette__item:hover {
+	background: #f4f5f6;
+}
+
+.ds-palette__preview {
+	width: 40px;
+	height: 28px;
+	pointer-events: none;
 }
 
 .ds-toolbar {
@@ -99,23 +165,149 @@
 	border-radius: 4px;
 }
 
-.ds-shape--diamond {
-	border-radius: 4px;
-	transform: rotate(45deg);
+.ds-shape--rounded {
+	border-radius: 16px;
 }
 
-.ds-shape--diamond .ds-shape__content {
-	transform: rotate(-45deg);
+.ds-shape--text {
+	border: none !important;
 }
 
 .ds-shape--ellipse {
 	border-radius: 50%;
 }
 
+.ds-shape--diamond {
+	clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.ds-shape--parallelogram {
+	clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+}
+
+.ds-shape--triangle {
+	clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.ds-shape--hexagon {
+	clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.ds-shape--cylinder {
+	border-radius: 50% 50% 50% 50% / 18% 18% 18% 18%;
+}
+
+.ds-shape--cloud {
+	border-radius: 60% 60% 50% 50% / 70% 70% 40% 40%;
+}
+
+.ds-shape--document {
+	clip-path: polygon(0 0, 100% 0, 100% 85%, 75% 100%, 50% 88%, 25% 100%, 0 85%);
+}
+
 .ds-shape--note {
 	border-radius: 2px;
 	border-color: #d4b106;
 	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.ds-shape--callout {
+	border-radius: 8px;
+	position: relative;
+}
+
+.ds-shape--callout::after {
+	content: "";
+	position: absolute;
+	left: 16px;
+	bottom: -10px;
+	width: 0;
+	height: 0;
+	border: 6px solid transparent;
+	border-top-color: #4b5563;
+	border-bottom: none;
+}
+
+.ds-shape--terminator {
+	border-radius: 999px;
+}
+
+.ds-shape--predefined {
+	border-left: 6px double #4b5563;
+	border-right: 6px double #4b5563;
+	border-radius: 2px;
+}
+
+.ds-shape--manual-input {
+	clip-path: polygon(0 25%, 100% 0, 100% 100%, 0% 100%);
+}
+
+.ds-shape--arrow-right {
+	clip-path: polygon(0 25%, 60% 25%, 60% 0, 100% 50%, 60% 100%, 60% 75%, 0 75%);
+}
+
+.ds-shape--arrow-left {
+	clip-path: polygon(100% 25%, 40% 25%, 40% 0, 0 50%, 40% 100%, 40% 75%, 100% 75%);
+}
+
+.ds-shape--arrow-double {
+	clip-path: polygon(
+		15% 50%,
+		35% 20%,
+		35% 40%,
+		65% 40%,
+		65% 20%,
+		85% 50%,
+		65% 80%,
+		65% 60%,
+		35% 60%,
+		35% 80%
+	);
+}
+
+.ds-shape--actor {
+	border: none !important;
+	background: transparent !important;
+}
+
+.ds-shape--uml-class {
+	border-radius: 2px;
+	align-items: stretch;
+}
+
+.ds-shape__content--actor {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.ds-actor-svg {
+	width: 32px;
+	height: 48px;
+}
+
+.ds-shape__content--uml-class {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+}
+
+.ds-uml-class__header {
+	padding: 4px;
+	border-bottom: 1.5px solid #4b5563;
+	font-weight: 600;
+}
+
+.ds-uml-class__section {
+	flex: 1;
+	border-bottom: 1px solid #d1d5db;
+}
+
+.ds-uml-class__section:last-child {
+	border-bottom: none;
 }
 
 .ds-toolbar__btn {

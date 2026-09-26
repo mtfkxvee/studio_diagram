@@ -2,6 +2,8 @@
 // everything goes through the Frappe session cookie + CSRF token that the
 // desk page already has, so permissions/roles are enforced by ERPNext itself.
 
+import type { ShapeKind } from "./shapes";
+
 export type DiagramNode = {
 	id: string;
 	type: "shape" | "linked";
@@ -10,7 +12,7 @@ export type DiagramNode = {
 	height?: number;
 	data: {
 		label: string;
-		shape?: "rectangle" | "diamond" | "ellipse" | "note";
+		shape?: ShapeKind;
 		color?: string;
 		reference_doctype?: string;
 		reference_name?: string;
