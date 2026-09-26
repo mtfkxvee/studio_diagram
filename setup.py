@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 with open("requirements.txt") as f:
-	install_requires = f.read().strip().split("\n")
+	install_requires = [line for line in f.read().strip().split("\n") if line]
 
 setup(
 	name="diagram_studio",
