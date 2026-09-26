@@ -1,0 +1,41 @@
+{
+  "doctype": "DocType",
+  "name": "Diagram Reference",
+  "module": "Diagram Studio",
+  "custom": 0,
+  "istable": 1,
+  "editable_grid": 0,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "node_id",
+      "fieldtype": "Data",
+      "label": "Node ID",
+      "in_list_view": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "reference_doctype",
+      "fieldtype": "Link",
+      "label": "Reference Doctype",
+      "options": "DocType",
+      "in_list_view": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "reference_name",
+      "fieldtype": "Dynamic Link",
+      "label": "Reference Name",
+      "options": "reference_doctype",
+      "in_list_view": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "label",
+      "fieldtype": "Data",
+      "label": "Label (cached)",
+      "read_only": 1
+    }
+  ],
+  "permissions": []
+}

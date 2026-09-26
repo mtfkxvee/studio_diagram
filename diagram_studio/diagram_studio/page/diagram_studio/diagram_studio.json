@@ -1,0 +1,11 @@
+{
+  "doctype": "Page",
+  "name": "diagram-studio",
+  "title": "Diagram Studio",
+  "module": "Diagram Studio",
+  "page_name": "diagram-studio",
+  "standard": "Yes",
+  "system_page": 0,
+  "icon": "octicon octicon-git-branch",
+  "roles": []
+}
