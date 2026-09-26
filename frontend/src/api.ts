@@ -4,10 +4,14 @@
 
 export type DiagramNode = {
 	id: string;
-	type: "text" | "linked";
+	type: "shape" | "linked";
 	position: { x: number; y: number };
+	width?: number;
+	height?: number;
 	data: {
 		label: string;
+		shape?: "rectangle" | "diamond" | "ellipse" | "note";
+		color?: string;
 		reference_doctype?: string;
 		reference_name?: string;
 		image?: string;

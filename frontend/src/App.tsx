@@ -8,9 +8,10 @@ import ReactFlow, {
 	useNodesState,
 	type Connection,
 	type Edge,
+	type EdgeMouseHandler,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import TextNode from "./nodes/TextNode";
+import ShapeNode, { type ShapeKind } from "./nodes/ShapeNode";
 import LinkedNode from "./nodes/LinkedNode";
 import LinkPicker from "./LinkPicker";
 import {
@@ -22,7 +23,14 @@ import {
 	type DiagramSummary,
 } from "./api";
 
-const nodeTypes = { text: TextNode, linked: LinkedNode };
+const nodeTypes = { shape: ShapeNode, linked: LinkedNode };
+
+const SHAPE_PRESETS: { kind: ShapeKind; icon: string; title: string; color: string }[] = [
+	{ kind: "rectangle", icon: "▭", title: "Proses", color: "#ffffff" },
+	{ kind: "diamond", icon: "◇", title: "Keputusan", color: "#ffffff" },
+	{ kind: "ellipse", icon: "○", title: "Mulai/Selesai", color: "#ffffff" },
+	{ kind: "note", icon: "🗒", title: "Sticky note", color: "#fef08a" },
+];
 
 let nodeIdCounter = 1;
 function nextNodeId() {
@@ -50,14 +58,41 @@ export default function App() {
 		setDirty(true);
 	}
 
+	function handleStyleChange(id: string, patch: Partial<{ shape: ShapeKind; color: string }>) {
+		setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
+		setDirty(true);
+	}
+
+	function handleDeleteNode(id: string) {
+		setNodes((nds) => nds.filter((n) => n.id !== id));
+		setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+		setDirty(true);
+	}
+
+	function decorate(n: any) {
+		// Diagrams saved before ShapeNode existed used type "text" with no
+		// shape/color — treat those as plain rectangles so old diagrams still
+		// open instead of rendering blank.
+		if (n.type === "text" || n.type === "shape") {
+			return {
+				...n,
+				type: "shape",
+				data: {
+					shape: "rectangle",
+					color: "#ffffff",
+					...n.data,
+					onLabelChange: handleLabelChange,
+					onStyleChange: handleStyleChange,
+					onDelete: handleDeleteNode,
+				},
+			};
+		}
+		return { ...n, data: { ...n.data, onLabelChange: handleLabelChange } };
+	}
+
 	async function openDiagram(name: string) {
 		const { canvas_json } = await getDiagram(name);
-		setNodes(
-			canvas_json.nodes.map((n) => ({
-				...n,
-				data: { ...n.data, onLabelChange: handleLabelChange },
-			}))
-		);
+		setNodes(canvas_json.nodes.map(decorate));
 		setEdges(canvas_json.edges as Edge[]);
 		setCurrent(name);
 		setDirty(false);
@@ -66,6 +101,9 @@ export default function App() {
 	async function newDiagram() {
 		const title = prompt("Nama diagram baru:");
 		if (!title) return;
+		// "Other" here just means "no fixed convention" — nothing about a
+		// diagram requires linking to an ERPNext record. Pure brainstorming
+		// diagrams (shape nodes only, no ERP link) work the same way.
 		const name = await createDiagram(title, "Flowchart");
 		refreshList();
 		setNodes([]);
@@ -85,15 +123,22 @@ export default function App() {
 		refreshList();
 	}
 
-	function addTextNode() {
+	function addShapeNode(preset: (typeof SHAPE_PRESETS)[number]) {
 		const id = nextNodeId();
 		setNodes((nds) => [
 			...nds,
 			{
 				id,
-				type: "text",
+				type: "shape",
 				position: { x: 100 + nds.length * 30, y: 100 + nds.length * 20 },
-				data: { label: "Teks baru", onLabelChange: handleLabelChange },
+				data: {
+					label: preset.title,
+					shape: preset.kind,
+					color: preset.color,
+					onLabelChange: handleLabelChange,
+					onStyleChange: handleStyleChange,
+					onDelete: handleDeleteNode,
+				},
 			},
 		]);
 		setDirty(true);
@@ -116,7 +161,17 @@ export default function App() {
 
 	const onConnect = useCallback(
 		(params: Connection) => {
-			setEdges((eds) => addEdge(params, eds));
+			setEdges((eds) => addEdge({ ...params, label: "" }, eds));
+			setDirty(true);
+		},
+		[setEdges]
+	);
+
+	const onEdgeDoubleClick: EdgeMouseHandler = useCallback(
+		(_, edge) => {
+			const label = prompt("Label garis:", (edge.label as string) || "");
+			if (label === null) return;
+			setEdges((eds) => eds.map((e) => (e.id === edge.id ? { ...e, label } : e)));
 			setDirty(true);
 		},
 		[setEdges]
@@ -124,17 +179,22 @@ export default function App() {
 
 	async function handleSave() {
 		if (!current) return;
-		const cleanNodes = nodes.map(({ id, type, position, data }) => ({
+		const cleanNodes = nodes.map(({ id, type, position, width, height, data }) => ({
 			id,
 			type,
 			position,
+			width,
+			height,
 			data: {
 				label: data.label,
+				shape: data.shape,
+				color: data.color,
 				reference_doctype: data.reference_doctype,
 				reference_name: data.reference_name,
 			},
 		}));
-		await saveCanvas(current, { nodes: cleanNodes as any, edges: edges as any });
+		const cleanEdges = edges.map(({ id, source, target, label }) => ({ id, source, target, label }));
+		await saveCanvas(current, { nodes: cleanNodes as any, edges: cleanEdges as any });
 		setDirty(false);
 		refreshList();
 	}
@@ -158,8 +218,12 @@ export default function App() {
 				{current ? (
 					<>
 						<div className="ds-toolbar">
-							<button onClick={addTextNode}>+ Teks</button>
-							<button onClick={() => setShowPicker(true)}>+ Node terhubung</button>
+							{SHAPE_PRESETS.map((preset) => (
+								<button key={preset.kind} title={preset.title} onClick={() => addShapeNode(preset)}>
+									{preset.icon} {preset.title}
+								</button>
+							))}
+							<button onClick={() => setShowPicker(true)}>+ Node terhubung ke ERP</button>
 							<button onClick={handleSave} disabled={!dirty}>
 								{dirty ? "Simpan perubahan" : "Tersimpan"}
 							</button>
@@ -173,7 +237,9 @@ export default function App() {
 								setDirty(true);
 							}}
 							onConnect={onConnect}
+							onEdgeDoubleClick={onEdgeDoubleClick}
 							nodeTypes={nodeTypes}
+							deleteKeyCode={["Backspace", "Delete"]}
 							fitView
 						>
 							<Background />

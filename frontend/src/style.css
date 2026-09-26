@@ -72,6 +72,76 @@
 	text-align: center;
 }
 
+.ds-shape {
+	border: 1.5px solid #4b5563;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	box-sizing: border-box;
+}
+
+.ds-shape__content {
+	padding: 4px 10px;
+	text-align: center;
+	word-break: break-word;
+}
+
+.ds-shape__content input {
+	width: 100%;
+	text-align: center;
+	border: none;
+	background: transparent;
+	font-size: 13px;
+}
+
+.ds-shape--rectangle {
+	border-radius: 4px;
+}
+
+.ds-shape--diamond {
+	border-radius: 4px;
+	transform: rotate(45deg);
+}
+
+.ds-shape--diamond .ds-shape__content {
+	transform: rotate(-45deg);
+}
+
+.ds-shape--ellipse {
+	border-radius: 50%;
+}
+
+.ds-shape--note {
+	border-radius: 2px;
+	border-color: #d4b106;
+	box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.ds-toolbar__btn {
+	border: 1px solid #d1d8dd;
+	background: #fff;
+	border-radius: 4px;
+	padding: 2px 6px;
+	margin-right: 2px;
+	cursor: pointer;
+}
+
+.ds-toolbar__btn.active {
+	background: #2490ef;
+	color: #fff;
+}
+
+.ds-toolbar__swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 1px solid #8d99a6;
+	margin-right: 2px;
+	cursor: pointer;
+	padding: 0;
+}
+
 .ds-node--linked {
 	border-color: #2490ef;
 }
