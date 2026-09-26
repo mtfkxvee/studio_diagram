@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
 	Background,
 	Controls,
+	MarkerType,
 	MiniMap,
 	ReactFlowProvider,
 	addEdge,
@@ -11,6 +12,7 @@ import ReactFlow, {
 	type Connection,
 	type Edge,
 	type EdgeMouseHandler,
+	type NodeDragHandler,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import ShapeNode, { type Direction } from "./nodes/ShapeNode";
@@ -18,10 +20,27 @@ import LinkedNode from "./nodes/LinkedNode";
 import LinkPicker from "./LinkPicker";
 import ShapePalette from "./ShapePalette";
 import QuickCreateMenu, { type QuickPreset } from "./QuickCreateMenu";
+import AlignmentGuides, { type Guides } from "./AlignmentGuides";
 import type { ShapePreset } from "./shapes";
 import { getDiagram, saveCanvas } from "./api";
 
 const nodeTypes = { shape: ShapeNode, linked: LinkedNode };
+
+// draw.io's default connector: orthogonal (right-angle) routing with a
+// filled arrowhead — not React Flow's bezier-with-no-arrow default.
+const EDGE_DEFAULTS = {
+	type: "smoothstep",
+	markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: "#4b5563" },
+	style: { stroke: "#4b5563", strokeWidth: 1.5 },
+};
+
+function withEdgeDefaults(edge: any) {
+	return { ...EDGE_DEFAULTS, ...edge };
+}
+
+// How close two shapes' edges/centers need to be (in screen pixels,
+// independent of zoom) before we show a guide line and snap to it.
+const SNAP_PIXELS = 8;
 
 let nodeIdCounter = 1;
 function nextNodeId() {
@@ -40,8 +59,9 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 	const [quickCreate, setQuickCreate] = useState<{ sourceId: string; direction: Direction; x: number; y: number } | null>(null);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+	const [guides, setGuides] = useState<Guides>({});
 	const wrapperRef = useRef<HTMLDivElement>(null);
-	const { screenToFlowPosition } = useReactFlow();
+	const { screenToFlowPosition, getViewport } = useReactFlow();
 
 	function handleLabelChange(id: string, label: string) {
 		setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, label } } : n)));
@@ -58,6 +78,86 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 		setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
 		setDirty(true);
 	}
+
+	// Compares the node being dragged against every other node's left/center/
+	// right (and top/center/bottom) and snaps to + shows a guide line for the
+	// first match within the pixel threshold — the same "smart guides" feel
+	// as draw.io. Threshold is converted from screen pixels to flow units so
+	// it feels consistent whether you're zoomed in or out.
+	const onNodeDrag: NodeDragHandler = useCallback(
+		(_, dragged) => {
+			const { zoom } = getViewport();
+			const threshold = SNAP_PIXELS / zoom;
+			const w = dragged.width ?? 120;
+			const h = dragged.height ?? 60;
+			const left = dragged.position.x;
+			const right = left + w;
+			const centerX = left + w / 2;
+			const top = dragged.position.y;
+			const bottom = top + h;
+			const centerY = top + h / 2;
+
+			let snapX: number | undefined;
+			let guideX: number | undefined;
+			let snapY: number | undefined;
+			let guideY: number | undefined;
+
+			for (const other of nodes) {
+				if (other.id === dragged.id) continue;
+				const ow = other.width ?? 120;
+				const oh = other.height ?? 60;
+				const oLeft = other.position.x;
+				const oRight = oLeft + ow;
+				const oCenterX = oLeft + ow / 2;
+				const oTop = other.position.y;
+				const oBottom = oTop + oh;
+				const oCenterY = oTop + oh / 2;
+
+				if (snapX === undefined) {
+					if (Math.abs(left - oLeft) < threshold) {
+						snapX = oLeft;
+						guideX = oLeft;
+					} else if (Math.abs(right - oRight) < threshold) {
+						snapX = oRight - w;
+						guideX = oRight;
+					} else if (Math.abs(centerX - oCenterX) < threshold) {
+						snapX = oCenterX - w / 2;
+						guideX = oCenterX;
+					}
+				}
+				if (snapY === undefined) {
+					if (Math.abs(top - oTop) < threshold) {
+						snapY = oTop;
+						guideY = oTop;
+					} else if (Math.abs(bottom - oBottom) < threshold) {
+						snapY = oBottom - h;
+						guideY = oBottom;
+					} else if (Math.abs(centerY - oCenterY) < threshold) {
+						snapY = oCenterY - h / 2;
+						guideY = oCenterY;
+					}
+				}
+			}
+
+			setGuides({ x: guideX, y: guideY });
+
+			if (snapX !== undefined || snapY !== undefined) {
+				setNodes((nds) =>
+					nds.map((n) =>
+						n.id === dragged.id
+							? { ...n, position: { x: snapX ?? n.position.x, y: snapY ?? n.position.y } }
+							: n
+					)
+				);
+			}
+		},
+		[nodes, setNodes, getViewport]
+	);
+
+	const onNodeDragStop = useCallback(() => {
+		setGuides({});
+		setDirty(true);
+	}, []);
 
 	function handleQuickCreate(sourceId: string, direction: Direction, clientX: number, clientY: number) {
 		setQuickCreate({ sourceId, direction, x: clientX, y: clientY });
@@ -113,14 +213,14 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 		]);
 		setEdges((eds) => [
 			...eds,
-			{
+			withEdgeDefaults({
 				id: `edge-${sourceId}-${newId}`,
 				source: sourceId,
 				sourceHandle: `${direction}-source`,
 				target: newId,
 				targetHandle: `${OPPOSITE[direction]}-target`,
 				label: "",
-			},
+			}),
 		]);
 		setDirty(true);
 	}
@@ -150,7 +250,7 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 	async function openDiagram(name: string) {
 		const { canvas_json } = await getDiagram(name);
 		setNodes(canvas_json.nodes.map(decorate));
-		setEdges(canvas_json.edges as Edge[]);
+		setEdges(canvas_json.edges.map(withEdgeDefaults) as Edge[]);
 		setCurrent(name);
 		setDirty(false);
 	}
@@ -235,7 +335,7 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 
 	const onConnect = useCallback(
 		(params: Connection) => {
-			setEdges((eds) => addEdge({ ...params, label: "" }, eds));
+			setEdges((eds) => addEdge(withEdgeDefaults({ ...params, label: "" }), eds));
 			setDirty(true);
 		},
 		[setEdges]
@@ -295,14 +395,20 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 							<ReactFlow
 								nodes={nodes}
 								edges={edges}
-								onNodesChange={onNodesChange}
+								onNodesChange={(changes) => {
+									onNodesChange(changes);
+									setDirty(true);
+								}}
 								onEdgesChange={(changes) => {
 									onEdgesChange(changes);
 									setDirty(true);
 								}}
+								onNodeDrag={onNodeDrag}
+								onNodeDragStop={onNodeDragStop}
 								onConnect={onConnect}
 								onEdgeDoubleClick={onEdgeDoubleClick}
 								nodeTypes={nodeTypes}
+								defaultEdgeOptions={EDGE_DEFAULTS}
 								deleteKeyCode={["Backspace", "Delete"]}
 								fitView
 							>
@@ -310,6 +416,7 @@ function Editor({ initialOpen, onReady }: EditorProps) {
 								<Controls />
 								<MiniMap />
 							</ReactFlow>
+							<AlignmentGuides guides={guides} />
 						</div>
 						{showPicker && (
 							<LinkPicker onPick={addLinkedNode} onClose={() => setShowPicker(false)} />

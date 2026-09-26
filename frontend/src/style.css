@@ -15,6 +15,30 @@
 .ds-flow-wrapper {
 	flex: 1;
 	min-height: 0;
+	position: relative;
+}
+
+.ds-guides {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 20;
+}
+
+.ds-guides__v {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1px;
+	background: #ff0072;
+}
+
+.ds-guides__h {
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: #ff0072;
 }
 
 .ds-palette {
